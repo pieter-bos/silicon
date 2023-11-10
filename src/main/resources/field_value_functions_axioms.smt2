@@ -11,23 +11,30 @@
 ; The axiom therefore needs to be emitted after the sort wrappers have
 ; been emitted.
 
-(assert (forall ((vs $FVF<$FLD$>) (ws $FVF<$FLD$>)) (!
-    (=>
-      (and
-        (Set_equal ($FVF.domain_$FLD$ vs) ($FVF.domain_$FLD$ ws))
-        (forall ((x $Ref)) (!
-          (=>
-            (Set_in x ($FVF.domain_$FLD$ vs))
-            (= ($FVF.lookup_$FLD$ vs x) ($FVF.lookup_$FLD$ ws x)))
-          :pattern (($FVF.lookup_$FLD$ vs x) ($FVF.lookup_$FLD$ ws x))
-          :qid |qp.$FVF<$FLD$>-eq-inner|
-          )))
-      (= vs ws))
-    :pattern (($SortWrappers.$FVF<$FLD$>To$Snap vs)
-              ($SortWrappers.$FVF<$FLD$>To$Snap ws)
-              )
-    :qid |qp.$FVF<$FLD$>-eq-outer|
-    )))
+(assert
+  (forall ((vs $FVF<$FLD$>) (x $Ref)) (!
+    (=
+      (select ($FVF.array_$FLD$ vs) x)
+      (ite
+        (Set_in x ($FVF.domain_$FLD$ vs))
+        ($FVF.lookup_$FLD$ vs x)
+        $FVF.undefined_$FLD$
+      )
+    )
+    :pattern (($SortWrappers.$FVF<$FLD$>To$Snap vs) (select ($FVF.array_$FLD$ vs) x))
+    :qid |fvf-$FLD$-array|
+  ))
+)
+
+(assert
+  (forall ((vs $FVF<$FLD$>)) (!
+    (= vs
+      ($FVF.defn_$FLD$ ($FVF.array_$FLD vs) ($FVF.domain_$FLD$ vs))
+    )
+    :pattern (($SortWrappers.$FVF<$FLD$>To$Snap vs))
+    :qid |fvf-$FLD$-inv|
+  ))
+)
 
 (assert (forall ((r $Ref) (pm $FPM)) (!
     ($Perm.isValidVar ($FVF.perm_$FLD$ pm r))

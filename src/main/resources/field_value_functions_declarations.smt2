@@ -13,3 +13,7 @@
 (declare-fun $FVF.loc_$FLD$ ($S$ $Ref) Bool)
 (declare-fun $FVF.perm_$FLD$ ($FPM $Ref) $Perm)
 (declare-const $fvfTOP_$FLD$ $FVF<$FLD$>)
+
+(declare-const $FVF.undefined_$FLD$ $S$)
+(declare-fun $FVF.array_$FLD$ ($FVF<$FLD$>) (Array $Ref $S$))
+(declare-fun $FVF.defn_$FLD$ ((Array $Ref $S$) (Set<$Ref>)) $FVF<$FLD$>)
