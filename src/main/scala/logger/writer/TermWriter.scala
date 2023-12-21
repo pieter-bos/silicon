@@ -45,6 +45,12 @@ object TermWriter {
 
     sort match {
       case sorts.Unit => JsObject("id" -> JsString("Unit"))
+      case sorts.Array(arguments, result) =>
+        JsObject(
+          "id" -> JsString("Array"),
+          "args" -> JsArray(arguments.map(toJSON).toVector),
+          "result" -> toJSON(result),
+        )
       case sorts.Seq(elementsSort) => s("Seq", elementsSort)
       case sorts.Set(elementsSort) => s("Set", elementsSort)
       case sorts.Multiset(elementsSort) => s("Multiset", elementsSort)
@@ -80,12 +86,11 @@ object TermWriter {
         "sort" -> toJSON(a.sort)
       )
 
-    case Lookup(field, fieldValueFunction, receiver) =>
+    case FVFArray(field, fieldValueFunction) =>
       JsObject(
-        "type" -> JsString("lookup"),
+        "type" -> JsString("fieldMap"),
         "field" -> JsString(field),
         "fieldValueFunction" -> toJSON(fieldValueFunction),
-        "receiver" -> toJSON(receiver)
       )
     case PredicateLookup(predicate, predicateSnapFunction, args) =>
       JsObject(

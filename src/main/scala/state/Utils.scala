@@ -71,6 +71,9 @@ package object utils {
     case ivp: IsValidPermVar => List(ivp.v)
     case irp: IsReadPermVar => List(irp.v)
     case app: Application[_] => app.args
+    case ar: ArrayConst => List(ar.value)
+    case ar: ArraySelect => ar.array +: ar.index
+    case ar: ArrayStore => List(ar.array) ++ ar.index ++ List(ar.value)
     case sr: SeqRanged => List(sr.p0, sr.p1)
     case ss: SeqSingleton => List(ss.p)
     case su: SeqUpdate => List(su.t0, su.t1, su.t2)
@@ -84,7 +87,7 @@ package object utils {
       val (vs, ts) = l.bindings.toSeq.unzip
       vs ++ ts :+ l.body
     case Domain(_, fvf) => fvf :: Nil
-    case Lookup(_, fvf, at) => fvf :: at :: Nil
+    case FVFArray(_, fvf) => fvf :: Nil
     case PermLookup(_, pm, at) => pm :: at :: Nil
     case PredicateDomain(_, psf) => psf :: Nil
     case PredicateLookup(_, psf, args) => Seq(psf) ++ args
@@ -164,6 +167,9 @@ package object utils {
       case PermAtMost(p0, p1) => PermAtMost(go(p0), go(p1))
       case PermMin(p0, p1) => PermMin(go(p0), go(p1))
       case App(f, ts) => App(f, ts map go)
+      case ArrayConst(i, r, v) => ArrayConst(i, r, go(v))
+      case ArraySelect(a, i) => ArraySelect(go(a), i.map(go))
+      case ArrayStore(a, i, v) => ArrayStore(go(a), i.map(go), go(v))
       case SeqRanged(t0, t1) => SeqRanged(go(t0), go(t1))
       case SeqSingleton(t) => SeqSingleton(go(t))
       case SeqAppend(t0, t1) => SeqAppend(go(t0), go(t1))
@@ -203,7 +209,7 @@ package object utils {
 //      case Distinct(ts) => Distinct(ts map go)
       case Let(bindings, body) => Let(bindings map (p => go(p._1) -> go(p._2)), go(body))
       case Domain(f, fvf) => Domain(f, go(fvf))
-      case Lookup(f, fvf, at) => Lookup(f, go(fvf), go(at))
+      case FVFArray(f, fvf) => FVFArray(f, go(fvf))
       case PermLookup(field, pm, at) => PermLookup(field, go(pm), go(at))
       case FieldTrigger(f, fvf, at) => FieldTrigger(f, go(fvf), go(at))
 

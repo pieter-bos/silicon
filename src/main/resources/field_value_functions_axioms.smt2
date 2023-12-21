@@ -12,29 +12,26 @@
 ; been emitted.
 
 (assert
-  (forall ((vs $FVF<$FLD$>) (x $Ref)) (!
-    (=
-      (select ($FVF.array_$FLD$ vs) x)
-      (ite
-        (Set_in x ($FVF.domain_$FLD$ vs))
-        ($FVF.lookup_$FLD$ vs x)
-        $FVF.undefined_$FLD$
+  (forall ((vs $FVF<$FLD$>)) (!
+    (forall ((x $Ref)) (!
+      (=>
+        (not (select ($FVF.domain_$FLD$ vs) x))
+        (= (select ($FVF.array_$FLD$ vs) x) $FVF.undefined_$FLD$)
       )
-    )
-    :pattern (($SortWrappers.$FVF<$FLD$>To$Snap vs) (select ($FVF.array_$FLD$ vs) x))
-    :qid |fvf-$FLD$-array|
-  ))
-)
+      :qid |fvf-$FLD$-array-inner|
+    ))
+    :pattern (($SortWrappers.$FVF<$FLD$>To$Snap vs))
+    :qid |fvf-$FLD$-array-outer|
+  )))
 
 (assert
   (forall ((vs $FVF<$FLD$>)) (!
     (= vs
-      ($FVF.defn_$FLD$ ($FVF.array_$FLD vs) ($FVF.domain_$FLD$ vs))
+      ($FVF.defn_$FLD$ ($FVF.array_$FLD$ vs) ($FVF.domain_$FLD$ vs))
     )
     :pattern (($SortWrappers.$FVF<$FLD$>To$Snap vs))
     :qid |fvf-$FLD$-inv|
-  ))
-)
+  )))
 
 (assert (forall ((r $Ref) (pm $FPM)) (!
     ($Perm.isValidVar ($FVF.perm_$FLD$ pm r))

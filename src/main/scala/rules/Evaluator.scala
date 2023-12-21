@@ -208,7 +208,7 @@ object evaluator extends EvaluationRules {
                 v1.decider.assume(trigger)
               }
               if (s1.triggerExp) {
-                val fvfLookup = Lookup(fa.field.name, fvfDef.sm, tRcvr)
+                val fvfLookup = ArraySelect(FVFArray(fa.field.name, fvfDef.sm), Seq(tRcvr))
                 val fr1 = s1.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, fvfLookup)
                 val s2 = s1.copy(functionRecorder = fr1)
                 Q(s2, fvfLookup, v1)
@@ -217,7 +217,7 @@ object evaluator extends EvaluationRules {
                   case false =>
                     createFailure(pve dueTo InsufficientPermission(fa), v1, s1)
                   case true =>
-                    val fvfLookup = Lookup(fa.field.name, fvfDef.sm, tRcvr)
+                    val fvfLookup = ArraySelect(FVFArray(fa.field.name, fvfDef.sm), Seq(tRcvr))
                     val fr1 = s1.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, fvfLookup).recordFvfAndDomain(fvfDef)
                     val possTriggers = if (s1.heapDependentTriggers.contains(fa.field) && s1.recordPossibleTriggers)
                       s1.possibleTriggers + (fa -> FieldTrigger(fa.field.name, fvfDef.sm, tRcvr))
@@ -251,7 +251,7 @@ object evaluator extends EvaluationRules {
                 case false =>
                   createFailure(pve dueTo InsufficientPermission(fa), v1, s1)
                 case true =>
-                  val smLookup = Lookup(fa.field.name, smDef1.sm, tRcvr)
+                  val smLookup = ArraySelect(FVFArray(fa.field.name, smDef1.sm), Seq(tRcvr))
                   val fr2 =
                     s1.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, smLookup)
                                        .recordFvfAndDomain(smDef1)
@@ -1475,7 +1475,7 @@ object evaluator extends EvaluationRules {
         val rcvHelper = generateFieldTrigger(acc, s, pve, v)
         val rcvTrig = rcvHelper._3
         axioms = axioms ++ smDef1.valueDefinitions ++ rcvHelper._1
-        mostRecentTrig = FieldTrigger(fa.field.name, smDef1.sm, Lookup(rcvTrig.field, rcvTrig.fvf, rcvTrig.at))
+        mostRecentTrig = FieldTrigger(fa.field.name, smDef1.sm, ArraySelect(FVFArray(rcvTrig.field, rcvTrig.fvf), Seq(rcvTrig.at)))
         triggers = triggers ++ rcvHelper._2 :+ mostRecentTrig
         smRes = smRes ++ rcvHelper._4
       case rcv =>
@@ -1484,9 +1484,9 @@ object evaluator extends EvaluationRules {
         t match { /* TODO: r isn't used - why? */
           case Some(cachedTrigger) =>
             cachedTrigger match {
-              case l: Lookup =>
+              case ArraySelect(FVFArray(field, _), Seq(at)) =>
                 axioms = axioms ++ smDef1.valueDefinitions
-                mostRecentTrig = FieldTrigger(l.field, smDef1.sm, l.at)
+                mostRecentTrig = FieldTrigger(field, smDef1.sm, at)
                 triggers = triggers :+ mostRecentTrig
               case _ =>
                 eval(s1.copy(triggerExp = true), rcv, pve, v)((_, tRcv, _) => {

@@ -43,6 +43,7 @@ class TermToSMTLib2Converter
     case sorts.Perm => "$Perm"
     case sorts.Snap => "$Snap"
     case sorts.Ref => "$Ref"
+    case sorts.Array(arguments, result) => parens(text("Array") <+> ssep(arguments.map(doRender(_, true)), space) <+> doRender(result, true))
     case sorts.Map(keySort, valueSort) => text("Map") <> "<" <> doRender(keySort, true) <> "~_" <> doRender(valueSort, true) <> ">"
     case sorts.Seq(elementSort) => text("Seq<") <> doRender(elementSort, true) <> ">"
     case sorts.Set(elementSort) => text("Set<") <> doRender(elementSort, true) <> ">"
@@ -213,6 +214,13 @@ class TermToSMTLib2Converter
     case IsValidPermVar(v) => parens(text("$Perm.isValidVar") <+> render(v))
     case IsReadPermVar(v) => parens(text("$Perm.isReadVar") <+> render(v))
 
+    /* Arrays */
+
+    case ArrayConst(ss, s0, t) =>
+      parens(renderBinaryOp("as", "const", render(sorts.Array(ss, s0))) <+> render(t))
+    case ArraySelect(t0, ts) => renderNAryOp("select", (t0 +: ts): _*)
+    case ArrayStore(t0, ts, t1) => renderNAryOp("store", (t0 +: ts :+ t1): _*)
+
     /* Sequences */
 
     case SeqRanged(t0, t1) => renderBinaryOp("Seq_range", render(t0), render(t1))
@@ -260,9 +268,9 @@ class TermToSMTLib2Converter
 
     case Domain(id, fvf) => parens(text("$FVF.domain_") <> id <+> render(fvf))
 
-    case Lookup(field, fvf, at) => //fvf.sort match {
+    case FVFArray(field, fvf) => //fvf.sort match {
 //      case _: sorts.PartialFieldValueFunction =>
-        parens(text("$FVF.lookup_") <> field <+> render(fvf) <+> render(at))
+        parens(text("$FVF.array_") <> field <+> render(fvf))
 //      case _: sorts.TotalFieldValueFunction =>
 //        render(Apply(fvf, Seq(at)))
 //        parens("$FVF.lookup_" <> field <+> render(fvf) <+> render(at))
@@ -271,7 +279,7 @@ class TermToSMTLib2Converter
 //    }
 
     case FieldTrigger(field, fvf, at) => parens(text("$FVF.loc_") <> field <+> (fvf.sort match {
-      case sorts.FieldValueFunction(_, _) => render(Lookup(field, fvf, at)) <+> render(at)
+      case sorts.FieldValueFunction(_, _) => render(ArraySelect(FVFArray(field, fvf), Seq(at))) <+> render(at)
       case _ => render(fvf) <+> render(at)
     }))
 

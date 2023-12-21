@@ -85,6 +85,7 @@ class TriggerGenerator
     case app: App => app.applicable.isInstanceOf[Function]
     case   _: CustomEquals
          | _: PermMin
+         | _: ArrayTerm
          | _: SeqTerm
          | _: SeqLength
          | _: SeqAt
@@ -102,7 +103,7 @@ class TriggerGenerator
          | _: MapUpdate
          | _: SnapshotTerm
          | _: Domain
-         | _: Lookup
+         | _: FVFArray
          | _: PredicateLookup
          => true
     case _ => false

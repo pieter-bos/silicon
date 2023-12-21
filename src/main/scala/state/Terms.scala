@@ -58,6 +58,12 @@ object sorts {
     override lazy val toString = id.toString
   }
 
+  case class Array(arguments: scala.Seq[Sort], result: Sort) extends Sort {
+    require(arguments.nonEmpty)
+    val id = Identifier(s"Array[${(arguments :+ result).mkString(", ")}]")
+    override lazy val toString = s"${arguments.mkString("(", ", ", ")")} => $result"
+  }
+
   case class UserSort(id: Identifier) extends Sort {
     override lazy val toString = id.toString
   }
@@ -1490,6 +1496,64 @@ object PermMin extends CondFlyweightTermFactory[(Term, Term), PermMin] {
   override def actualCreate(args: (Term, Term)): PermMin = new PermMin(args._1, args._2)
 }
 
+/* Arrays */
+
+sealed trait ArrayTerm extends Term {
+  override def sort: sorts.Array
+}
+
+class ArraySelect private[terms] (val array: Term, val index: Seq[Term])
+  extends Term with ConditionalFlyweight[(Term, Seq[Term]), ArraySelect] {
+  utils.assertSort(array, "array", "Array", _.isInstanceOf[sorts.Array])
+  val arraySort: sorts.Array = array.sort.asInstanceOf[sorts.Array]
+
+  require(index.size == arraySort.arguments.size)
+  index.zip(arraySort.arguments).foreach {
+    case (index, sort) => utils.assertSort(index, "index", sort)
+  }
+
+  override val equalityDefiningMembers: (Term, Seq[Term]) = (array, index)
+  override val sort: Sort = arraySort.result
+}
+
+object ArraySelect extends CondFlyweightTermFactory[(Term, Seq[Term]), ArraySelect] {
+  override def actualCreate(args: (Term, Stack[Term])): ArraySelect =
+    new ArraySelect(args._1, args._2)
+}
+
+class ArrayConst private[terms] (val argumentSorts: Seq[Sort], val resultSort: Sort, val value: Term)
+  extends ArrayTerm with ConditionalFlyweight[(Seq[Sort], Sort, Term), ArrayConst] {
+  require(argumentSorts.nonEmpty)
+
+  override val equalityDefiningMembers: (Seq[Sort], Sort, Term) = (argumentSorts, resultSort, value)
+  override val sort: sorts.Array = sorts.Array(argumentSorts, resultSort)
+}
+
+object ArrayConst extends CondFlyweightTermFactory[(Seq[Sort], Sort, Term), ArrayConst] {
+  override def actualCreate(args: (Seq[Sort], Sort, Term)): ArrayConst =
+    new ArrayConst(args._1, args._2, args._3)
+}
+
+class ArrayStore private[terms] (val array: Term, val index: Seq[Term], val value: Term)
+  extends ArrayTerm with ConditionalFlyweight[(Term, Seq[Term], Term), ArrayStore] {
+  utils.assertSort(array, "array", "Array", _.isInstanceOf[sorts.Array])
+  override val sort: sorts.Array = array.sort.asInstanceOf[sorts.Array]
+
+  require(index.size == sort.arguments.size)
+  index.zip(sort.arguments).foreach {
+    case (index, sort) => utils.assertSort(index, "index", sort)
+  }
+
+  utils.assertSort(value, "value", sort.result)
+
+  override val equalityDefiningMembers: (Term, Seq[Term], Term) = (array, index, value)
+}
+
+object ArrayStore extends CondFlyweightTermFactory[(Term, Seq[Term], Term), ArrayStore] {
+  override def actualCreate(args: (Term, Stack[Term], Term)): ArrayStore =
+    new ArrayStore(args._1, args._2, args._3)
+}
+
 /* Sequences */
 
 sealed trait SeqTerm extends Term {
@@ -2129,19 +2193,6 @@ object Second extends CondFlyweightTermFactory[Term, Second] {
 }
 
 /* Quantified permissions */
-
-class Lookup(val field: String, val fvf: Term, val at: Term) extends Term with ConditionalFlyweight[(String, Term, Term), Lookup] {
-  utils.assertSort(fvf, "field value function", "FieldValueFunction", _.isInstanceOf[sorts.FieldValueFunction])
-  utils.assertSort(at, "receiver", sorts.Ref)
-
-  override val equalityDefiningMembers: (String, Term, Term) = (field, fvf, at)
-  val sort = fvf.sort.asInstanceOf[sorts.FieldValueFunction].codomainSort
-}
-
-object Lookup extends PreciseCondFlyweightFactory[(String, Term, Term), Lookup] {
-  override def actualCreate(args: (String, Term, Term)): Lookup = new Lookup(args._1, args._2, args._3)
-}
-
 class PermLookup(val field: String, val pm: Term, val at: Term) extends Term with ConditionalFlyweight[(String, Term, Term), PermLookup] {
   utils.assertSort(pm, "field perm function", "FieldPermFunction", _.isInstanceOf[sorts.FieldPermFunction])
   utils.assertSort(at, "receiver", sorts.Ref)
@@ -2154,16 +2205,27 @@ object PermLookup extends PreciseCondFlyweightFactory[(String, Term, Term), Perm
   override def actualCreate(args: (String, Term, Term)): PermLookup = new PermLookup(args._1, args._2, args._3)
 }
 
-class Domain(val field: String, val fvf: Term) extends SetTerm /*with PossibleTrigger*/ with ConditionalFlyweight[(String, Term), Domain] {
+class Domain(val field: String, val fvf: Term) extends ArrayTerm /*with PossibleTrigger*/ with ConditionalFlyweight[(String, Term), Domain] {
   utils.assertSort(fvf, "field value function", "FieldValueFunction", _.isInstanceOf[sorts.FieldValueFunction])
 
-  val elementsSort = sorts.Ref
-  val sort = sorts.Set(elementsSort)
+  val sort = sorts.Array(Seq(sorts.Ref), sorts.Bool)
   override val equalityDefiningMembers: (String, Term) = (field, fvf)
 }
 
 object Domain extends CondFlyweightTermFactory[(String, Term), Domain] {
   override def actualCreate(args: (String, Term)): Domain = new Domain(args._1, args._2)
+}
+
+class FVFArray(val field: String, val fvf: Term) extends ArrayTerm /*with PossibleTrigger*/ with ConditionalFlyweight[(String, Term), FVFArray] {
+  utils.assertSort(fvf, "field value function", "FieldValueFunction", _.isInstanceOf[sorts.FieldValueFunction])
+  val fvfSort = fvf.sort.asInstanceOf[sorts.FieldValueFunction]
+
+  val sort = sorts.Array(Seq(sorts.Ref), fvfSort.codomainSort)
+  override val equalityDefiningMembers: (String, Term) = (field, fvf)
+}
+
+object FVFArray extends CondFlyweightTermFactory[(String, Term), FVFArray] {
+  override def actualCreate(args: (String, Term)): FVFArray = new FVFArray(args._1, args._2)
 }
 
 class FieldTrigger(val field: String, val fvf: Term, val at: Term) extends Term with ConditionalFlyweight[(String, Term, Term), FieldTrigger] {
@@ -2339,8 +2401,8 @@ object ResourceLookup {
     }
   }
 
-  def apply(field: ast.Field, sm: Term, rcvr: Term): Lookup =
-    Lookup(field.name, sm, rcvr)
+  def apply(field: ast.Field, sm: Term, rcvr: Term): Term =
+    ArraySelect(FVFArray(field.name, sm), Seq(rcvr))
 
   def apply(predicate: ast.Predicate, sm: Term, args: Seq[Term]): PredicateLookup =
     PredicateLookup(predicate.name, sm, args)

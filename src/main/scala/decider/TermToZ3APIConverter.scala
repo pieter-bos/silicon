@@ -99,6 +99,7 @@ class TermToZ3APIConverter
       case sorts.Perm => ctx.mkRealSort()
       case sorts.Snap => getSnapSort
       case sorts.Ref => ctx.mkUninterpretedSort("$Ref")
+      case sorts.Array(arguments, result) => ctx.mkArraySort(arguments.map(convertSort).toArray, convertSort(result))
       case sorts.Map(keySort, valueSort) => ctx.mkUninterpretedSort("Map<" + convertSortName(keySort) + "~_" + convertSortName(valueSort) + ">")
       case sorts.Seq(elementSort) => {
         val res = ctx.mkUninterpretedSort("Seq<" + convertSortName(elementSort) + ">")
@@ -140,6 +141,7 @@ class TermToZ3APIConverter
       case sorts.Perm => None
       case sorts.Snap => Some(ctx.mkSymbol("$Snap"))
       case sorts.Ref => Some(ctx.mkSymbol("$Ref"))
+      case sorts.Array(arguments, result) => ???
       case sorts.Map(keySort, valueSort) => Some(ctx.mkSymbol("Map<" + convertSortName(keySort) + "~_" + convertSortName(valueSort) + ">"))
       case sorts.Seq(elementSort) => Some(ctx.mkSymbol("Seq<" + convertSortName(elementSort) + ">"))
       case sorts.Set(elementSort) => Some(ctx.mkSymbol("Set<" + convertSortName(elementSort) + ">"))
@@ -356,6 +358,12 @@ class TermToZ3APIConverter
         //  ctx.mkNot(ctx.mkEq(convert(v).asInstanceOf[ArithExpr], ctx.mkReal(0))))
       }
 
+      /* Arrays */
+
+      case ar: ArrayConst => ctx.mkConstArray(convertSort(ar.sort), convert(ar.value))
+      case ar: ArraySelect => createApp("select", ar.array +: ar.index, ar.sort)
+      case ar: ArrayStore => createApp("store", ar.array +: ar.index :+ ar.value, ar.sort)
+
       /* Sequences */
 
       case SeqRanged(t0, t1) => createApp("Seq_range", Seq(t0, t1), term.sort)
@@ -403,11 +411,11 @@ class TermToZ3APIConverter
 
       case Domain(id, fvf) => createApp("$FVF.domain_" + id, Seq(fvf), term.sort)
 
-      case Lookup(field, fvf, at) =>
-        createApp("$FVF.lookup_" + field, Seq(fvf, at), term.sort)
+      case FVFArray(field, fvf) =>
+        createApp("$FVF.array_" + field, Seq(fvf), term.sort)
 
       case FieldTrigger(field, fvf, at) => createApp("$FVF.loc_" + field, (fvf.sort match {
-        case sorts.FieldValueFunction(_, _) => Seq(Lookup(field, fvf, at), at)
+        case sorts.FieldValueFunction(_, _) => Seq(ArraySelect(FVFArray(field, fvf), Seq(at)), at)
         case _ => Seq(fvf, at)
       }), term.sort)
 

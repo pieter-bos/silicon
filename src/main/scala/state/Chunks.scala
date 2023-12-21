@@ -81,12 +81,12 @@ case class QuantifiedFieldChunk(id: BasicChunkIdentifier,
   override def snapshotMap: Term = fvf
   override def singletonArguments: Option[Seq[Term]] = singletonRcvr.map(Seq(_))
 
-  def valueAt(rcvr: Term): Term = Lookup(id.name, fvf, rcvr)
+  def valueAt(rcvr: Term): Term = ArraySelect(FVFArray(id.name, fvf), Seq(rcvr))
 
   override def valueAt(arguments: Seq[Term]): Term = {
     require(arguments.length == 1)
 
-    Lookup(id.name, fvf, arguments.head)
+    ArraySelect(FVFArray(id.name, fvf), Seq(arguments.head))
   }
 
   override def withPerm(newPerm: Term) = QuantifiedFieldChunk(id, fvf, newPerm, invs, initialCond, singletonRcvr, hints)

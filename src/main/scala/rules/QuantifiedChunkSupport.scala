@@ -426,12 +426,12 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val sm = freshSnapshotMap(s, field, additionalFvfArgs, v)
 
     val smDomainDefinitionCondition = optSmDomainDefinitionCondition.getOrElse(True)
-    val codomainQVarsInDomainOfSummarisingSm = SetIn(codomainQVar, Domain(field.name, sm))
+    val codomainQVarsInDomainOfSummarisingSm = ArraySelect(Domain(field.name, sm), Seq(codomainQVar))
 
     val valueDefinitions =
       relevantChunks map (chunk => {
-        val lookupSummary = Lookup(field.name, sm, codomainQVar)
-        val lookupChunk = Lookup(field.name, chunk.snapshotMap, codomainQVar)
+        val lookupSummary = ArraySelect(FVFArray(field.name, sm), Seq(codomainQVar))
+        val lookupChunk = ArraySelect(FVFArray(field.name, chunk.snapshotMap), Seq(codomainQVar))
 
         val effectiveCondition =
           And(
@@ -451,7 +451,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         Forall(
           codomainQVar,
           And(relevantChunks map (chunk => FieldTrigger(field.name, chunk.snapshotMap, codomainQVar))),
-          Trigger(Lookup(field.name, sm, codomainQVar)),
+          Trigger(ArraySelect(FVFArray(field.name, sm), Seq(codomainQVar))),
           s"qp.fvfResTrgDef${v.counter(this).next()}",
           isGlobal = true)
       valueDefinitions :+ resourceTriggerDefinition
