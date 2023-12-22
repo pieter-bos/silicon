@@ -13,3 +13,8 @@
 (declare-fun $FVF.loc_$FLD$ ($S$ $Ref) Bool)
 (declare-fun $FVF.perm_$FLD$ ($FPM $Ref) $Perm)
 (declare-const $fvfTOP_$FLD$ $FVF<$FLD$>)
+
+(declare-fun $FVF.domain_$FLD$_arr ($FVF<$FLD$>) (Array $Ref Bool))
+(declare-fun $FVF.lookup_$FLD$_arr ($FVF<$FLD$>) (Array $Ref $S$))
+(declare-const $FVF.lookup_dummy_$FLD$ $S$)
+(declare-fun $FVF.mk_for_eq_$FLD$ ((Array $Ref Bool) (Array $Ref $S$)) $FVF<$FLD$>)
